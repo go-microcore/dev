@@ -1,0 +1,343 @@
+networks:
+  infra:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.250.0.0/16
+
+volumes:
+  postgres-data:
+  pgadmin-data:
+  redis-data:
+  tempo-data:
+  mimir-data:
+  loki-data:
+  alloy-data:
+  kafka-data:
+
+services:
+  postgres:
+    profiles: ["infra"]
+    image: postgres:16.4
+    container_name: postgres
+    hostname: postgres
+    restart: unless-stopped
+    env_file: ./infra/postgres/.env
+    networks:
+      - infra
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  pgadmin:
+    profiles: ["infra"]
+    image: dpage/pgadmin4:9.6.0
+    container_name: pgadmin
+    hostname: pgadmin
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    env_file: ./infra/pgadmin/.env
+    networks:
+      - infra
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  redis:
+    profiles: ["infra"]
+    image: redis:7.4.0
+    container_name: redis
+    hostname: redis
+    restart: unless-stopped
+    networks:
+      - infra
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  tempo:
+    profiles: ["infra"]
+    image: grafana/tempo:latest
+    container_name: tempo
+    hostname: tempo
+    restart: unless-stopped
+    networks:
+      - infra
+    volumes:
+      - tempo-data:/var/tempo
+      - ./infra/tempo/config.yaml:/etc/tempo.yaml:ro
+    command: ["-config.file=/etc/tempo.yaml"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  mimir:
+    profiles: ["infra"]
+    image: grafana/mimir:2.17.1
+    container_name: mimir
+    hostname: mimir
+    restart: unless-stopped
+    networks:
+      - infra
+    volumes:
+      - mimir-data:/mimir
+      - ./infra/mimir/config.yaml:/etc/mimir/config.yaml:ro
+    command: ["--config.file=/etc/mimir/config.yaml"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  loki:
+    profiles: ["infra"]
+    image: grafana/loki:main
+    container_name: loki
+    hostname: loki
+    restart: unless-stopped
+    networks:
+      - infra
+    volumes:
+      - loki-data:/loki
+      - ./infra/loki/config.yaml:/etc/loki/config.yaml:ro
+    command: ["--config.file=/etc/loki/config.yaml"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  alloy:
+    profiles: ["infra"]
+    image: grafana/alloy:v1.11.2
+    container_name: alloy
+    hostname: alloy
+    restart: unless-stopped
+    networks:
+      - infra
+    ports:
+      - "12345:12345"
+      - "4317:4317"
+    volumes:
+      - alloy-data:/var/lib/alloy/data
+      - ./infra/alloy/config.alloy:/etc/alloy/config.alloy
+    command: [
+      "run", 
+      "--server.http.listen-addr=0.0.0.0:12345", 
+      "--storage.path=/var/lib/alloy/data",
+      "/etc/alloy/config.alloy"
+    ]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  grafana:
+    profiles: ["infra"]
+    image: grafana/grafana:12.2
+    container_name: grafana
+    hostname: grafana
+    restart: unless-stopped
+    networks:
+      - infra
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./infra/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    env_file: ./infra/grafana/.env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  kafka:
+    profiles: ["infra"]
+    image: apache/kafka:3.9.1
+    container_name: kafka
+    hostname: kafka
+    restart: unless-stopped
+    env_file: ./infra/kafka/.env
+    networks:
+      - infra
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  kafka-ui:
+    profiles: ["infra"]
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    hostname: kafka-ui
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    env_file: ./infra/kafka-ui/.env
+    networks:
+      - infra
+    ports:
+      - "18080:8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  notifications-service-migrate:
+    profiles: ["migrations"]
+    image: microcorelab/notifications-service:v0.1.0
+    command: ["migrate"]
+    container_name: notifications-service-migrate
+    hostname: notifications-service-migrate
+    restart: "no"
+    env_file: ./services/notifications/.env.migrate
+    networks:
+      - infra
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  users-service-migrate:
+    profiles: ["migrations"]
+    image: microcorelab/users-service:v0.1.0
+    command: ["migrate"]
+    container_name: users-service-migrate
+    hostname: users-service-migrate
+    restart: "no"
+    depends_on:
+      - notifications-service-migrate
+    env_file: ./services/users/.env.migrate
+    networks:
+      - infra
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  users-service-seed:
+    profiles: ["seed"]
+    image: microcorelab/users-service:v0.1.0
+    command: ["seed"]
+    container_name: users-service-seed
+    hostname: users-service-seed
+    restart: "no"
+    env_file: ./services/users/.env.seed
+    networks:
+      - infra
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  auth-service-server:
+    profiles: ["services"]
+    image: microcorelab/auth-service:v0.1.0
+    command: ["server"]
+    container_name: auth-service-server
+    hostname: auth-service-server
+    restart: unless-stopped
+    env_file: ./services/auth/.env.server
+    networks:
+      - infra
+    ports:
+      - "8081:80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  notifications-service-server:
+    profiles: ["services"]
+    image: microcorelab/notifications-service:v0.1.0
+    command: ["server"]
+    container_name: notifications-service-server
+    hostname: notifications-service-server
+    restart: unless-stopped
+    env_file: ./services/notifications/.env.server
+    networks:
+      - infra
+    ports:
+      - "8082:80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  users-service-server:
+    profiles: ["services"]
+    image: microcorelab/users-service:v0.1.0
+    command: ["server"]
+    container_name: users-service-server
+    hostname: users-service-server
+    restart: unless-stopped
+    env_file: ./services/users/.env.server
+    networks:
+      - infra
+    ports:
+      - "8083:80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  files-service-server:
+    profiles: ["services"]
+    image: microcorelab/files-service:v0.1.0
+    command: ["server"]
+    container_name: files-service-server
+    hostname: files-service-server
+    restart: unless-stopped
+    env_file: ./services/files/.env.server
+    networks:
+      - infra
+    ports:
+      - "8084:80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  gateway:
+    profiles: ["gateway"]
+    image: nginx
+    container_name: gateway
+    hostname: gateway
+    restart: unless-stopped
+    networks:
+      - infra
+    ports:
+      - "8888:80"
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
