@@ -208,7 +208,7 @@ services:
 
   notifications-service-migrate:
     profiles: ["migrations"]
-    image: microcorelab/notifications-service:v0.1.0
+    image: microcorelab/notifications-service:v0.1.1
     command: ["migrate"]
     container_name: notifications-service-migrate
     hostname: notifications-service-migrate
@@ -223,7 +223,7 @@ services:
         max-file: "3"
   users-service-migrate:
     profiles: ["migrations"]
-    image: microcorelab/users-service:v0.1.0
+    image: microcorelab/users-service:v0.1.1
     command: ["migrate"]
     container_name: users-service-migrate
     hostname: users-service-migrate
@@ -241,7 +241,7 @@ services:
 
   users-service-seed:
     profiles: ["seed"]
-    image: microcorelab/users-service:v0.1.0
+    image: microcorelab/users-service:v0.1.1
     command: ["seed"]
     container_name: users-service-seed
     hostname: users-service-seed
@@ -257,7 +257,7 @@ services:
 
   auth-service-server:
     profiles: ["services"]
-    image: microcorelab/auth-service:v0.1.0
+    image: microcorelab/auth-service:v0.1.1
     command: ["server"]
     container_name: auth-service-server
     hostname: auth-service-server
@@ -274,7 +274,7 @@ services:
         max-file: "3"
   notifications-service-server:
     profiles: ["services"]
-    image: microcorelab/notifications-service:v0.1.0
+    image: microcorelab/notifications-service:v0.1.1
     command: ["server"]
     container_name: notifications-service-server
     hostname: notifications-service-server
@@ -291,7 +291,7 @@ services:
         max-file: "3"
   users-service-server:
     profiles: ["services"]
-    image: microcorelab/users-service:v0.1.0
+    image: microcorelab/users-service:v0.1.1
     command: ["server"]
     container_name: users-service-server
     hostname: users-service-server
@@ -308,7 +308,7 @@ services:
         max-file: "3"
   files-service-server:
     profiles: ["services"]
-    image: microcorelab/files-service:v0.1.0
+    image: microcorelab/files-service:v0.1.1
     command: ["server"]
     container_name: files-service-server
     hostname: files-service-server
